@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <style>
+        canvas{
+            background: whitesmoke;
+        }
+        body{
+            margin: 0;
+            margin-bottom: 0;
+        }
+        input[type="button"]{
+            width:175px;
+        }
+    </style>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            var canvas = document.querySelector('canvas');
+            var c = canvas.getContext('2d');
+            canvas.height = innerHeight;
+            canvas.width = innerWidth;
+            var level = localStorage.getItem("level");
+            console.log("Level "+level);
+            var Hscore;
+            var lost = false;
+            var lives = 3;
+            var ball = new Ball();
+            var buildings = [];
+            var tall = [100, 150, 200, 250, 300, 350, 400, 450];
+            var localX = innerHeight;
+            var score = 0;
+            var height;
+            if (level == "Easy"){
+                Hscore = localStorage.getItem("EScore");
+            } else if(level == "Medium"){
+                Hscore = localStorage.getItem("MScore");
+            }else if(level == "Hard"){
+                Hscore = localStorage.getItem("HScore");
+            }
+            ball.draw();
+            for (var i = 0; i < 500; i++) {
+                height = tall[parseInt(Math.random() * tall.length)];
+                buildings.push(new Building(innerHeight - height, height));
+            }
+            animate();
+            $(document).keydown(function (e) {
+                ball.checkClicked(e);
+            });
+            function Ball() {
+                this.touched = false;
+                this.x = 100;
+                this.y = 100;
+                this.r = 30;
+                this.velocity = 0;
+                this.gravity = 0.4;
+                this.draw = function () {
+                    this.lost = false;
+                    if (!this.lost) {
+                        c.beginPath();
+                        c.fillStyle = 'red';
+                        c.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+                        c.fill();
+                        c.stroke();
+                        c.closePath();
+                    }
+                };
+                this.update = function () {
+                    this.velocity += this.gravity;
+                    this.y += this.velocity;
+                    if (this.y+this.r>=canvas.height){
+                        this.y = innerHeight-this.r;
+                    }else if(this.y-this.r <= 0){
+                        this.y = this.r;
+                        this.velocity = 0;
+                    }
+                    this.draw();
+                };
+                this.checkClicked = function (e) {
+                    switch (e.keyCode) {
+                        case 38://up key pressed
+                        case 32://space pressed
+                            this.velocity += -15;
+                            break;
+                        case 13:
+                        case 116:
+                            location.replace("Game.html");
+                    }
+                }
+            }
+            function animate() {
+                if (!ball.touched) {
+                    requestAnimationFrame(animate);
+                }else{
+                    if (level == "Easy"){
+                        localStorage.setItem("EScore",score);
+                    } else if(level == "Medium"){
+                        localStorage.setItem("MScore",score);
+                    }else if(level == "Hard"){
+                        localStorage.setItem("HScore",score);
+                    }
+                    $("#reloadOrBack").toggle(1000);
+                }
+                c.clearRect(0, 0, innerWidth, innerHeight);
+                ball.update();
+                c.beginPath();
+                c.font = "16px Arial";
+                c.fillStyle = "blue";
+                c.fillText("Score : " + score, 30, 30);
+                c.fillText("Lives : "+lives,30,60);
+                c.fillText("Level "+level,30,90);
+                c.fillText("High Score : "+Hscore,130,30);
+                c.closePath();
+                var i = 0;
+                while(i < buildings.length){
+                    height = tall[parseInt(Math.random() * tall.length)];
+                    buildings[i].refresh();
+                    if (buildings[i].hits(ball)) {
+                        i++;
+                    }else{
+                        i++;
+                    }
+                }
+                if (lives <= 0 || lost || ball.y + ball.r >= innerHeight){
+                    var back = 10;
+                    ball.touched = true;
+                    lost = true;
+                    document.getElementById('fail').play();
+                    var counter=setInterval(timer, 1000); //1000 will  run it every 1 second
+                    function timer() {
+                        $("#timer").text("Back in "+back+" seconds");
+                        back--;
+                        if (back < 0)
+                        {
+                            clearInterval(counter);
+                            location.replace('levels.html');
+                        }
+
+                        //Do code for showing the number of seconds here
+                    }}
+            }
+            function Building(y, height) {
+                this.addScore = false;
+                this.space = 250;
+                this.color = 'black';
+                this.passed = false;
+                this.x = localX;
+                this.y = y;
+                this.width = 80;
+                this.height = height;
+                this.speed = 2;
+                localX+=300;
+                if (level == "Easy"){
+                    this.speed = 2;
+                    Hscore = localStorage.getItem("EScore");
+                } else if(level == "Medium"){
+                    this.speed = 2.5;
+                    Hscore = localStorage.getItem("MScore");
+                }else if (level == "Hard"){
+                    this.speed = 3;
+                    Hscore = localStorage.getItem("HScore");
+                }
+                this.draw = function () {
+                    c.beginPath();
+                    c.fillStyle = this.color;
+                    c.fillRect(this.x, this.y, this.width, this.height);
+                    c.fillRect(this.x, 0, this.width, innerHeight - height - this.space);
+                    c.fill();
+                    c.stroke();
+                    c.closePath();
+                };
+                this.refresh = function () {
+                    this.x -= this.speed;
+                    if (this.x <= 0) {
+                    }
+                    this.draw();
+                };
+                this.hits = function (ball) {
+                    if (ball.y-ball.r <= canvas.height-this.height-this.space || ball.y+ball.r >= canvas.height-this.height){
+                        if (ball.x+ball.r > this.x && ball.x-ball.r < this.x + this.width) {
+                            if (!this.addScore) {
+                                lives--;
+                            }
+                            if (!this.passed && lives > 0)
+                                document.getElementById('hit').play();
+                            this.addScore = true;
+                            this.passed = true;
+                            this.color = 'red';
+                        }
+                    }else if (ball.x-ball.r > this.x+this.width && !this.addScore){
+                        score += 100;
+                        this.addScore = true;
+                        document.getElementById("addScore").play();
+                    }
+                };
+            }
+        });
+    </script>
+</head>
+<body>
+<div hidden style="position: absolute; top:40%; left: 32%;width: 415px;height: 200px; background: transparent; border:2px solid gold; border-radius: 30px" id="reloadOrBack">
+    <p><font color="red">&nbsp;&nbsp;&nbsp;&nbsp; <label id="gameOver" style="font-size: 70px; font-family: Arial;">Game Over</label>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+        <label id="timer" style="font-size: 20px; font-family: Arial"></label>
+    </font></p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<input type="button" class="btn btn-success" height="26px" width="100px" value="Back" id="Back" onclick="location.replace('levels.html')">
+    &nbsp;&nbsp;<input type="button" class="btn btn-success" value="Play again" id="replay" onclick="location.replace('Game.html')">
+</div>
+
+<canvas id="myCanvas" style="background: white">
+</canvas>
+<audio id="addScore" src="sounds/273%20-%20sound%20effects.mp3"></audio>
+<audio id="hit" src="sounds/404743__owlstorm__retro-video-game-sfx-fail.wav"></audio>
+<audio id="fail" src="sounds/fail-buzzer-03.mp3"></audio>
+</body>
+</html>
